@@ -1,46 +1,55 @@
 {
-  "design_name": "inverter_block_clean",
+  "design_name": "INVERTER_28NM",
   "technology": "mock_28nm",
-
+  "top_cell": "INV_X1",
   "layers": [
     {
       "name": "M1",
       "geometries": [
-        { "id": "M1_1", "x": 10.0, "y": 10.0, "width": 0.16, "spacing": 0.14 },
-        { "id": "M1_2", "x": 10.40, "y": 10.0, "width": 0.16, "spacing": 0.14 }
+        { "x": 0.0,  "y": 0.0,  "width": 0.07,  "spacing": 0.08 },
+        { "x": 0.5,  "y": 0.0,  "width": 0.12,  "spacing": 0.15 },
+        { "x": 1.2,  "y": 0.5,  "width": 0.09,  "spacing": 0.10 }
+      ]
+    },
+    {
+      "name": "POLY",
+      "geometries": [
+        { "x": 0.2,  "y": 0.1,  "width": 0.025, "spacing": 0.05 },
+        { "x": 0.8,  "y": 0.2,  "width": 0.03,  "spacing": 0.04 }
+      ]
+    },
+    {
+      "name": "DIFF",
+      "geometries": [
+        { "x": 0.0,  "y": 0.3,  "width": 0.20,  "spacing": 0.10 },
+        { "x": 1.0,  "y": 0.3,  "width": 0.18,  "spacing": 0.11 }
       ]
     },
     {
       "name": "M2",
       "geometries": [
-        { "id": "M2_1", "x": 20.0, "y": 20.0, "width": 0.14, "spacing": 0.12 }
+        { "x": 0.3,  "y": 1.0,  "width": 0.08,  "spacing": 0.09 }
       ]
     }
   ],
-
   "nets": [
-    {
-      "name": "VDD",
-      "connections": ["M1_1"]
-    },
-    {
-      "name": "OUT",
-      "connections": ["M1_2", "M2_1"]
-    }
+    { "name": "VDD",  "connections": 4 },
+    { "name": "VSS",  "connections": 3 },
+    { "name": "IN",   "connections": 2 },
+    { "name": "OUT",  "connections": 1 }
   ],
-
   "devices": [
     {
-      "name": "PMOS1",
-      "type": "PMOS",
-      "schematic_width": 0.16,
-      "layout_width": 0.16
+      "name": "MN0",
+      "type": "NMOS",
+      "schematic_width": 0.28,
+      "layout_width":    0.30
     },
     {
-      "name": "NMOS1",
-      "type": "NMOS",
-      "schematic_width": 0.14,
-      "layout_width": 0.14
+      "name": "MP0",
+      "type": "PMOS",
+      "schematic_width": 0.56,
+      "layout_width":    0.56
     }
   ]
 }
