@@ -1,0 +1,46 @@
+{
+  "design_name": "inverter_block_clean",
+  "technology": "mock_28nm",
+
+  "layers": [
+    {
+      "name": "M1",
+      "geometries": [
+        { "id": "M1_1", "x": 10.0, "y": 10.0, "width": 0.16, "spacing": 0.14 },
+        { "id": "M1_2", "x": 10.40, "y": 10.0, "width": 0.16, "spacing": 0.14 }
+      ]
+    },
+    {
+      "name": "M2",
+      "geometries": [
+        { "id": "M2_1", "x": 20.0, "y": 20.0, "width": 0.14, "spacing": 0.12 }
+      ]
+    }
+  ],
+
+  "nets": [
+    {
+      "name": "VDD",
+      "connections": ["M1_1"]
+    },
+    {
+      "name": "OUT",
+      "connections": ["M1_2", "M2_1"]
+    }
+  ],
+
+  "devices": [
+    {
+      "name": "PMOS1",
+      "type": "PMOS",
+      "schematic_width": 0.16,
+      "layout_width": 0.16
+    },
+    {
+      "name": "NMOS1",
+      "type": "NMOS",
+      "schematic_width": 0.14,
+      "layout_width": 0.14
+    }
+  ]
+}
