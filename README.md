@@ -2,7 +2,7 @@
 
 > Web-deployed IC physical verification tool — upload a layout JSON,
 > run DRC/LVS, inspect violations, download sign-off reports.
-> The Project is Live at: https://pavan1832-drc-lvs-dashboard-app-zvogrg.streamlit.app/
+The Project is Live at: https://pavan1832-drc-lvs-dashboard-app-zvogrg.streamlit.app/
 
 ---
 
