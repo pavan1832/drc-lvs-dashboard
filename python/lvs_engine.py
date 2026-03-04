@@ -4,10 +4,10 @@ Simulates a Synopsys StarRC / Calibre LVS netlisting and comparison flow.
 """
 
 from __future__ import annotations
+import hashlib
 import random
 from dataclasses import dataclass
 from typing import Any
-
 
 # ── LVS error taxonomy (mirrors Calibre LVS output categories) ───────────────
 
@@ -47,7 +47,7 @@ def run_lvs(layout: dict[str, Any]) -> list[LVSViolation]:
     Returns a list of LVSViolation objects.
     """
     violations: list[LVSViolation] = []
-    seed = (hash(layout.get("design_name", "cell")) ^ 0xA5A5) & 0xFFFF
+    seed = (int(hashlib.md5(layout.get("design_name", "cell").encode()).hexdigest(), 16) ^ 0xA5A5) & 0xFFFF
     rng = random.Random(seed)
 
     net_names = _extract_net_names(layout)
