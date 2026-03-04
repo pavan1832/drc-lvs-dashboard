@@ -415,6 +415,9 @@ with st.sidebar:
 
 st.markdown("""
 <div class="main-header">
+  <div style="font-size:0.72rem; color:#7d9ab5; letter-spacing:0.15em; margin-bottom:0.6rem; font-family:'JetBrains Mono',monospace; text-transform:uppercase;">
+    Developed by &nbsp; Lokpavan P
+  </div>
   <h1>🔬 DRC / LVS Verification Dashboard</h1>
   <div class="subtitle">
     mock_icv-2024.12 &nbsp;·&nbsp; mock_28nm &nbsp;·&nbsp;
