@@ -31,7 +31,7 @@ TCL_SCRIPT = ROOT / "tcl" / "mock_drc_lvs.tcl"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Developed by Lokpavan P",
+  
     page_title="DRC/LVS Dashboard",
     page_icon="🔬",
     layout="wide",
