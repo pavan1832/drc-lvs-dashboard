@@ -267,20 +267,58 @@ def _run_engine(layout_path: Path, out_dir: Path) -> tuple[int, str, str]:
 
 def _run_tcl(design_name: str, technology: str) -> tuple[int, str]:
     """
-    Invoke the TCL mock engine via tclsh (if available).
-    Returns (returncode, stdout).
+    Run TCL mock flow.
+    Uses tclsh if available (local), otherwise falls back to
+    pure Python simulation (Streamlit Cloud / any server).
     """
     tclsh = shutil.which("tclsh")
-    if not tclsh:
-        return -1, "[WARN]  tclsh not found — TCL phase skipped.\n"
-    try:
-        proc = subprocess.run(
-            [tclsh, str(TCL_SCRIPT), design_name, technology],
-            capture_output=True, text=True, timeout=30,
-        )
-        return proc.returncode, proc.stdout + proc.stderr
-    except Exception as exc:
-        return -1, f"[WARN]  TCL invocation failed: {exc}\n"
+
+    if tclsh:
+        # ── Local machine with tclsh installed ────────────────────────
+        try:
+            proc = subprocess.run(
+                [tclsh, str(TCL_SCRIPT), design_name, technology],
+                capture_output=True, text=True, timeout=30,
+            )
+            return proc.returncode, proc.stdout + proc.stderr
+        except Exception as exc:
+            return -1, f"[WARN]  TCL invocation failed: {exc}\n"
+
+    else:
+        # ── Cloud / no tclsh — pure Python TCL simulation ─────────────
+        sep = "=" * 60
+        log = "\n".join([
+            sep,
+            f"  DRC/LVS TCL Engine — mock_icv-2024.12",
+            sep,
+            f"[INFO ]  Design    : {design_name}",
+            f"[INFO ]  Technology: {technology}",
+            f"[INFO ]  Mode      : DRC + LVS",
+            sep,
+            "  DRC — Design Rule Check",
+            sep,
+            f"[INFO ]  Loading rule deck: {technology}.drc",
+            "[INFO ]  Flattenning hierarchy ...",
+            "[INFO ]  Running layer derivations ...",
+            "[INFO ]  Checking minimum width rules ...",
+            "[INFO ]  Checking minimum spacing rules ...",
+            "[INFO ]  Checking enclosure rules ...",
+            "[INFO ]  DRC completed.",
+            sep,
+            "  LVS — Layout vs. Schematic",
+            sep,
+            "[INFO ]  Extracting SPICE netlist from layout ...",
+            "[INFO ]  Loading reference schematic netlist ...",
+            "[INFO ]  Comparing devices ...",
+            "[INFO ]  Comparing nets ...",
+            "[INFO ]  Resolving port directions ...",
+            "[INFO ]  LVS comparison completed.",
+            sep,
+            "  TCL ENGINE — DONE",
+            sep,
+            "[INFO ]  Control returned to Python orchestrator.",
+        ])
+        return 0, log
 
 
 def _colorise_log(raw: str) -> str:
