@@ -77,7 +77,6 @@ python python/main.py --layout sample_layout.json --outdir reports/
    - Main file: `app.py`
 5. Click **Deploy** — done.
 
-> `tclsh` is not available on Streamlit Cloud; the TCL phase is skipped
 > automatically and DRC/LVS results are unaffected.
 
 ---
