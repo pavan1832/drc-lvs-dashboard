@@ -5,6 +5,7 @@ Web UI layer built on Streamlit.
 Business logic is intentionally isolated in python/main.py (the engine).
 This layer is responsible ONLY for:
   - File upload / user interaction
+  - Input validation (schema check)
   - Subprocess orchestration
   - Report display and download
 """
@@ -25,13 +26,12 @@ import pandas as pd
 import streamlit as st
 
 # ── Path resolution ────────────────────────────────────────────────────────────
-ROOT      = Path(__file__).parent.resolve()
-ENGINE    = ROOT / "python" / "main.py"
+ROOT       = Path(__file__).parent.resolve()
+ENGINE     = ROOT / "python" / "main.py"
 TCL_SCRIPT = ROOT / "tcl" / "mock_drc_lvs.tcl"
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-  
     page_title="DRC/LVS Dashboard",
     page_icon="🔬",
     layout="wide",
@@ -78,6 +78,14 @@ st.markdown("""
     margin-top: 0.3rem;
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.05em;
+  }
+  .main-header .developer {
+    font-size: 0.72rem;
+    color: #7d9ab5;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
   }
 
   .metric-card {
@@ -153,9 +161,9 @@ st.markdown("""
     overflow-y: auto;
     white-space: pre-wrap;
   }
-  .log-info  { color: #58a6ff; }
-  .log-error { color: #f85149; }
-  .log-warn  { color: #d29922; }
+  .log-info    { color: #58a6ff; }
+  .log-error   { color: #f85149; }
+  .log-warn    { color: #d29922; }
   .log-signoff { color: #3fb950; font-weight: 700; }
 
   .stButton > button {
@@ -231,6 +239,51 @@ st.markdown("""
 #  HELPERS
 # ════════════════════════════════════════════════════════════════════════════════
 
+def _validate_layout_schema(layout: dict) -> tuple[bool, str]:
+    """
+    Validate that the uploaded JSON is a proper layout file.
+    Returns (is_valid, error_message).
+    Rejects non-layout JSONs like timesheets, invoices, etc.
+    """
+    # ── Check required top-level fields ──────────────────────────────────────
+    required_fields = ["design_name", "technology", "layers"]
+    missing = [f for f in required_fields if f not in layout]
+    if missing:
+        return False, (
+            f"Missing required fields: `{'`, `'.join(missing)}`\n\n"
+            f"This does not appear to be a DRC/LVS layout JSON.\n"
+            f"Required fields: `design_name`, `technology`, `layers`.\n\n"
+            f"Please upload a valid layout file or download the "
+            f"sample from the sidebar."
+        )
+
+    # ── Check layers is a non-empty list ─────────────────────────────────────
+    layers = layout.get("layers")
+    if not isinstance(layers, list) or len(layers) == 0:
+        return False, (
+            "`layers` must be a non-empty list.\n\n"
+            "Please upload a valid layout JSON."
+        )
+
+    # ── Check each layer has name and geometries ──────────────────────────────
+    for i, layer in enumerate(layers):
+        if not isinstance(layer, dict):
+            return False, f"Layer at index {i} must be an object."
+        if "name" not in layer:
+            return False, f"Layer at index {i} is missing `name` field."
+        if "geometries" not in layer:
+            return False, f"Layer at index {i} is missing `geometries` field."
+        if not isinstance(layer["geometries"], list):
+            return False, f"Layer `{layer['name']}` — `geometries` must be a list."
+
+    # ── Check technology looks like an EDA process node ──────────────────────
+    technology = str(layout.get("technology", ""))
+    if len(technology) == 0:
+        return False, "`technology` field cannot be empty."
+
+    return True, ""
+
+
 def _parse_stdout(stdout: str) -> dict:
     """Extract sign-off fields from the engine's [SIGNOFF] line."""
     result = {"status": None, "drc_viols": 0, "lvs_viols": 0}
@@ -274,7 +327,7 @@ def _run_tcl(design_name: str, technology: str) -> tuple[int, str]:
     tclsh = shutil.which("tclsh")
 
     if tclsh:
-        # ── Local machine with tclsh installed ────────────────────────
+        # ── Local machine with tclsh installed ────────────────────────────────
         try:
             proc = subprocess.run(
                 [tclsh, str(TCL_SCRIPT), design_name, technology],
@@ -285,15 +338,15 @@ def _run_tcl(design_name: str, technology: str) -> tuple[int, str]:
             return -1, f"[WARN]  TCL invocation failed: {exc}\n"
 
     else:
-        # ── Cloud / no tclsh — pure Python TCL simulation ─────────────
+        # ── Cloud / no tclsh — pure Python TCL simulation ─────────────────────
         sep = "=" * 60
         log = "\n".join([
             sep,
-            f"  DRC/LVS TCL Engine — mock_icv-2024.12",
+            "  DRC/LVS TCL Engine — mock_icv-2024.12",
             sep,
             f"[INFO ]  Design    : {design_name}",
             f"[INFO ]  Technology: {technology}",
-            f"[INFO ]  Mode      : DRC + LVS",
+            "[INFO ]  Mode      : DRC + LVS",
             sep,
             "  DRC — Design Rule Check",
             sep,
@@ -355,41 +408,37 @@ def _sample_layout_json() -> str:
             {
                 "name": "M1",
                 "geometries": [
-                    {"x": 0.0,  "y": 0.0,  "width": 0.07, "spacing": 0.08},
-                    {"x": 0.5,  "y": 0.0,  "width": 0.12, "spacing": 0.15},
+                    {"x": 0.0, "y": 0.0, "width": 0.07, "spacing": 0.08},
+                    {"x": 0.5, "y": 0.0, "width": 0.12, "spacing": 0.15},
                 ]
             },
             {
                 "name": "POLY",
                 "geometries": [
-                    {"x": 0.2,  "y": 0.1,  "width": 0.025, "spacing": 0.05},
+                    {"x": 0.2, "y": 0.1, "width": 0.025, "spacing": 0.05},
                 ]
             },
             {
                 "name": "DIFF",
                 "geometries": [
-                    {"x": 0.0,  "y": 0.3,  "width": 0.20,  "spacing": 0.10},
+                    {"x": 0.0, "y": 0.3, "width": 0.20, "spacing": 0.10},
                 ]
             },
         ],
         "nets": [
-            {"name": "VDD",  "connections": 4},
-            {"name": "VSS",  "connections": 3},
-            {"name": "IN",   "connections": 2},
-            {"name": "OUT",  "connections": 1},   # will trigger NET_OPEN
+            {"name": "VDD", "connections": 4},
+            {"name": "VSS", "connections": 3},
+            {"name": "IN",  "connections": 2},
+            {"name": "OUT", "connections": 1},
         ],
         "devices": [
             {
-                "name": "MN0",
-                "type": "NMOS",
-                "schematic_width": 0.28,
-                "layout_width":    0.30,           # W mismatch → LVS FAIL
+                "name": "MN0", "type": "NMOS",
+                "schematic_width": 0.28, "layout_width": 0.30,
             },
             {
-                "name": "MP0",
-                "type": "PMOS",
-                "schematic_width": 0.56,
-                "layout_width":    0.56,
+                "name": "MP0", "type": "PMOS",
+                "schematic_width": 0.56, "layout_width": 0.56,
             },
         ],
     }
@@ -453,9 +502,7 @@ with st.sidebar:
 
 st.markdown("""
 <div class="main-header">
-  <div style="font-size:0.72rem; color:#7d9ab5; letter-spacing:0.15em; margin-bottom:0.6rem; font-family:'JetBrains Mono',monospace; text-transform:uppercase;">
-    Developed by &nbsp; Lokpavan P
-  </div>
+  <div class="developer">Developed by &nbsp; Lokpavan P</div>
   <h1>🔬 DRC / LVS Verification Dashboard</h1>
   <div class="subtitle">
     mock_icv-2024.12 &nbsp;·&nbsp; mock_28nm &nbsp;·&nbsp;
@@ -464,8 +511,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Upload ────────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-header">01 — LAYOUT UPLOAD</div>', unsafe_allow_html=True)
+# ── Upload ─────────────────────────────────────────────────────────────────────
+st.markdown('<div class="section-header">01 — LAYOUT UPLOAD</div>',
+            unsafe_allow_html=True)
 
 uploaded = st.file_uploader(
     "Upload layout JSON (GDS-derived / OpenAccess export)",
@@ -476,20 +524,29 @@ uploaded = st.file_uploader(
 if uploaded:
     try:
         layout_preview = json.loads(uploaded.getvalue())
-        col_a, col_b = st.columns([3, 1])
-        with col_a:
-            st.success(
-                f"✓  Loaded: **{layout_preview.get('design_name', 'UNKNOWN')}** "
-                f"| Technology: `{layout_preview.get('technology', '—')}`"
-            )
-        with col_b:
-            st.info(f"{uploaded.size / 1024:.1f} KB")
     except json.JSONDecodeError:
         st.error("❌  File is not valid JSON. Please check your layout export.")
         st.stop()
 
+    # ── Schema validation ──────────────────────────────────────────────────────
+    is_valid, error_msg = _validate_layout_schema(layout_preview)
+    if not is_valid:
+        st.error(f"❌  Invalid layout file — {error_msg}")
+        st.stop()
+
+    # ── Show file info ─────────────────────────────────────────────────────────
+    col_a, col_b = st.columns([3, 1])
+    with col_a:
+        st.success(
+            f"✓  Loaded: **{layout_preview.get('design_name', 'UNKNOWN')}** "
+            f"| Technology: `{layout_preview.get('technology', '—')}`"
+        )
+    with col_b:
+        st.info(f"{uploaded.size / 1024:.1f} KB")
+
     # ── Run button ─────────────────────────────────────────────────────────────
-    st.markdown('<div class="section-header">02 — RUN VERIFICATION</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">02 — RUN VERIFICATION</div>',
+                unsafe_allow_html=True)
 
     run_col, _ = st.columns([1, 2])
     with run_col:
@@ -501,24 +558,24 @@ if uploaded:
             layout_file = tmp / "layout.json"
             layout_file.write_bytes(uploaded.getvalue())
 
-            # ── TCL phase (cosmetic, EDA realism) ─────────────────────────────
             design_name = layout_preview.get("design_name", "UNKNOWN")
             technology  = layout_preview.get("technology", "mock_28nm")
 
-            with st.spinner("Running TCL mock engine (tclsh) …"):
+            # ── TCL phase ─────────────────────────────────────────────────────
+            with st.spinner("Running TCL mock engine …"):
                 tcl_rc, tcl_log = _run_tcl(design_name, technology)
 
-            # ── Python engine ──────────────────────────────────────────────────
+            # ── Python engine ─────────────────────────────────────────────────
             with st.spinner("Running Python DRC/LVS engine …"):
                 t0 = time.time()
                 rc, stdout, stderr = _run_engine(layout_file, tmp)
                 elapsed = time.time() - t0
 
-            # ── Parse results ──────────────────────────────────────────────────
-            parsed = _parse_stdout(stdout)
-            status     = parsed["status"]
-            drc_viols  = parsed["drc_viols"]
-            lvs_viols  = parsed["lvs_viols"]
+            # ── Parse results ─────────────────────────────────────────────────
+            parsed    = _parse_stdout(stdout)
+            status    = parsed["status"]
+            drc_viols = parsed["drc_viols"]
+            lvs_viols = parsed["lvs_viols"]
 
             if status is None and rc != 0:
                 st.error(
@@ -527,13 +584,12 @@ if uploaded:
                 )
                 st.stop()
 
-            # ════════════════════════════════════════════════════════════════
-            #  RESULTS PANEL
-            # ════════════════════════════════════════════════════════════════
-            st.markdown('<div class="section-header">03 — VERIFICATION RESULTS</div>',
-                        unsafe_allow_html=True)
+            # ── Results panel ─────────────────────────────────────────────────
+            st.markdown(
+                '<div class="section-header">03 — VERIFICATION RESULTS</div>',
+                unsafe_allow_html=True,
+            )
 
-            # Sign-off status banner
             if status == "PASS":
                 st.markdown(
                     '<div class="status-pass">✓ &nbsp; SIGN-OFF : PASS</div>',
@@ -581,8 +637,10 @@ if uploaded:
                 </div>""", unsafe_allow_html=True)
 
             # ── Violation tables ───────────────────────────────────────────────
-            st.markdown('<div class="section-header">04 — VIOLATION TABLES</div>',
-                        unsafe_allow_html=True)
+            st.markdown(
+                '<div class="section-header">04 — VIOLATION TABLES</div>',
+                unsafe_allow_html=True,
+            )
 
             drc_tab, lvs_tab = st.tabs(["🔴  DRC Violations", "🟠  LVS Violations"])
 
@@ -635,8 +693,10 @@ if uploaded:
                     st.success("✓ LVS clean — layout matches schematic netlist.")
 
             # ── Downloads ──────────────────────────────────────────────────────
-            st.markdown('<div class="section-header">05 — REPORT DOWNLOADS</div>',
-                        unsafe_allow_html=True)
+            st.markdown(
+                '<div class="section-header">05 — REPORT DOWNLOADS</div>',
+                unsafe_allow_html=True,
+            )
 
             dl1, dl2, dl3 = st.columns(3)
 
@@ -675,7 +735,10 @@ if uploaded:
 
             # ── Engine logs ────────────────────────────────────────────────────
             with st.expander("🔧 Engine Logs (Python + TCL)", expanded=False):
-                combined = (tcl_log or "") + "\n" + stdout + (f"\n[STDERR]\n{stderr}" if stderr else "")
+                combined = (
+                    (tcl_log or "") + "\n" + stdout +
+                    (f"\n[STDERR]\n{stderr}" if stderr else "")
+                )
                 st.markdown(
                     f'<div class="log-block">{_colorise_log(combined)}</div>',
                     unsafe_allow_html=True,
